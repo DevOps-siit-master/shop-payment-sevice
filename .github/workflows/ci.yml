@@ -1,0 +1,73 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Check PR Title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: TruffleHog Secrets Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          extra_args: --only-verified
+      - name: Trivy Config Scan
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: config
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+
+  build-test:
+    needs: lint-and-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/shop-payment-service:pr-${{ github.event.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  container-scan:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dockle
+        uses: erzz/dockle-action@v1
+        with:
+          image: ${{ secrets.DOCKERHUB_USERNAME }}/shop-payment-service:pr-${{ github.event.number }}
+          exit-code: '1'
+          type: 'fatal'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
