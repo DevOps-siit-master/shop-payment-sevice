@@ -4,11 +4,23 @@ import {
   httpRequestDuration,
   httpRequestsTotal,
   httpResponseSizeBytes,
+  uniqueVisitorsTotal,
 } from './metrics';
+import { visitorFingerprint, isNewVisitor } from './visitors';
 
 @Injectable()
 export class MetricsMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
+    const forwaded = (req.headers['x-forwarded-for'] as string | undefined)
+      ?.split(',')[0]
+      ?.trim();
+    const ip = forwaded || req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] ?? 'unknown';
+
+    if (isNewVisitor(visitorFingerprint(ip, userAgent))) {
+      uniqueVisitorsTotal.inc();
+    }
+    
     const start = process.hrtime.bigint();
     res.on('finish', () => {
       const route = req.route?.path ?? req.path;
