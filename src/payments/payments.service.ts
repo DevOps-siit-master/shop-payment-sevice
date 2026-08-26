@@ -1,13 +1,21 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { Interface, JsonRpcProvider, parseUnits } from 'ethers';
+import { BadRequestException, Injectable, Logger, Inject } from '@nestjs/common';
+import { Interface, parseUnits } from 'ethers';
+import type { Provider } from 'ethers';
+import { ETH_PROVIDER } from './eth-provider';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  private readonly provider = new JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
-  private readonly usdt = (process.env.USDT_ADDRESS ?? '').toLowerCase();
-  private readonly shopWallet = (process.env.SHOP_WALLET_ADDRESS ?? '').toLowerCase();
-  private readonly orderApi = process.env.ORDER_SERVICE_URL ?? 'http://localhost:3000';
+  private readonly usdt: string;
+  private readonly shopWallet: string;
+  private readonly orderApi: string;
+
+  constructor(@Inject(ETH_PROVIDER) private readonly provider: Provider, config: ConfigService) {
+    this.usdt = (config.get<string>('USDT_ADDRESS') ?? '').toLowerCase();
+    this.shopWallet = (config.get<string>('SHOP_WALLET_ADDRESS') ?? '').toLowerCase();
+    this.orderApi = config.get<string>('ORDER_SERVICE_URL') ?? 'http://localhost:3000';
+  }
 
   async verify(orderId: string, txHash: string) {
     const orderRes = await fetch(`${this.orderApi}/orders/${orderId}`);

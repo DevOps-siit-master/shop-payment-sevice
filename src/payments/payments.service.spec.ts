@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { id, toBeHex, zeroPadValue } from 'ethers';
 import { PaymentsService } from './payments.service';
+import { ConfigService } from '@nestjs/config';
+import { Provider } from 'ethers';
 
 const TOKEN = '0x1111111111111111111111111111111111111111';
 const SHOP = '0x2222222222222222222222222222222222222222';
@@ -21,14 +23,23 @@ function transferLog(token: string, to: string, value: bigint) {
 describe('PaymentsService', () => {
   let service: PaymentsService;
   let getReceipt: jest.Mock;
-
+  
   beforeEach(() => {
-    service = new PaymentsService();
     getReceipt = jest.fn();
-    (service as any).provider = { getTransactionReceipt: getReceipt };
-    (service as any).usdt = TOKEN.toLowerCase();
-    (service as any).shopWallet = SHOP.toLowerCase();
-    (service as any).orderApi = 'http://order';
+
+    const config = {
+      get: (key: string) => 
+      ({
+        USDT_ADDRESS: TOKEN,
+        SHOP_WALLET_ADDRESS: SHOP,
+        ORDER_SERVICE_URL: 'http://order',
+      })[key],
+    } as unknown as ConfigService;
+    
+    service = new PaymentsService(
+      { getTransactionReceipt: getReceipt } as unknown as Provider,
+      config,
+    );
   });
 
   function mockOrder(total: string) {
