@@ -25,3 +25,9 @@ export const httpResponseSizeBytes = new Counter({
   labelNames: ['method', 'route', 'status'],
   registers: [registry],
 });
+
+export const uniqueVisitorsTotal = new Counter({
+  name: 'unique_visitors_total',
+  help: 'Distinct visitors (client IP + browser) seen in the last 24 hours',
+  registers: [registry],
+});
