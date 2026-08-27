@@ -80,15 +80,17 @@ docker run --rm -p 8545:8545 ghcr.io/foundry-rs/foundry:latest "anvil --host 0.0
 | Method & path | Body | Result |
 | --- | --- | --- |
 | `POST /payments/verify` | `{ orderId, txHash }` | `201` + `{ orderId, status: 'PAID', txHash }` when the transfer checks out; `400` when the order is unknown, the transaction is missing or unconfirmed, the recipient is wrong, or the amount is too low |
-| `GET /metrics` | — | `200` + Prometheus exposition format |
+| `GET /metrics` | - | `200` + Prometheus exposition format |
+| `GET /health` | - | `200` + a liveness result; it checks the process only, not the RPC endpoint or the order service |
+
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `SEPOLIA_RPC_URL` | `http://127.0.0.1:8545` | JSON-RPC endpoint the receipts are read from |
-| `USDT_ADDRESS` | — | Token contract whose `Transfer` events count as payment |
-| `SHOP_WALLET_ADDRESS` | — | The shop's payout address; transfers to any other address are rejected |
+| `USDT_ADDRESS` | - | Token contract whose `Transfer` events count as payment |
+| `SHOP_WALLET_ADDRESS` | - | The shop's payout address; transfers to any other address are rejected |
 | `ORDER_SERVICE_URL` | `http://localhost:3000` | Where orders are read and their status patched |
 | `PORT` | `3001` | HTTP port |
 | `CORS_ORIGIN` | `*` | Allowed origin for storefront requests |
@@ -104,7 +106,7 @@ integration tests point it at a throwaway chain.
 
 | Metric | Meaning |
 | --- | --- |
-| `http_requests_total` | Requests by method, route and status — the 24h totals, successes and failures required by spec 4.1 |
+| `http_requests_total` | Requests by method, route and status - the 24h totals, successes and failures required by spec 4.1 |
 | `http_request_duration_seconds` | Request latency histogram |
 | `http_response_size_bytes_total` | Bytes served, for the total traffic volume |
 | `unique_visitors_total` | Distinct visitors (client IP + browser) per 24h window |
@@ -114,24 +116,18 @@ up as a single trace spanning the storefront, this service and the order service
 
 ## Testing
 
-- **Unit** — `npm test` builds `Transfer` logs by hand and drives `verify()` against a mocked provider:
+- **Unit** - `npm test` builds `Transfer` logs by hand and drives `verify()` against a mocked provider:
   the happy path plus an unconfirmed transaction, a wrong recipient and an amount that is too low.
-- **Integration** — `npm run test:e2e` starts a real EVM node with Testcontainers, compiles and deploys
+- **Integration** - `npm run test:e2e` starts a real EVM node with Testcontainers, compiles and deploys
   a 6-decimal ERC-20, makes an actual transfer, and drives the API over HTTP. The order service is
-  stubbed, and the test asserts it received the `PAID` patch. Both suites run on every pull request (spec 5.2).
+  stubbed, and the test asserts it received the `PAID` patch. Both suites run on every pull request.
 
 ## CI/CD
 
-- **Pull requests** — conventional PR title check, TruffleHog secret scan, Trivy config scan, build,
+- **Pull requests** - conventional PR title check, TruffleHog secret scan, Trivy config scan, build,
   unit and integration tests, container image build and a Dockle image scan. A red pipeline blocks the merge.
-- **`main`** — the release workflow derives the next version from the conventional commits
+- **`main`** - the release workflow derives the next version from the conventional commits
   ([SemVer](https://semver.org/)) and publishes the image to Docker Hub.
-
-## Current limitations
-
-- There is no `/health` endpoint yet, so Kubernetes probes have nothing to call.
-- In the cluster, `SEPOLIA_RPC_URL`, `USDT_ADDRESS` and `SHOP_WALLET_ADDRESS` are meant to come from the
-  Shop's `Wallet` custom resource through the shop-operator; that wiring is still being finished.
 
 ## Contributing (Trunk Based Development)
 

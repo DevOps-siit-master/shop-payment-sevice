@@ -5,11 +5,13 @@ import { ConfigModule } from '@nestjs/config';
 import { PaymentsModule } from './payments/payments.module';
 import { MetricsController } from './metrics/metrics.controller';
 import { MetricsMiddleware } from './metrics/metrics.middleware';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    PaymentsModule
+    PaymentsModule,
+    HealthModule,
   ],
   controllers: [AppController, MetricsController],
   providers: [AppService],
