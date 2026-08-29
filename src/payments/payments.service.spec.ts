@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { id, toBeHex, zeroPadValue } from 'ethers';
+import { getAddress, id, toBeHex, zeroPadValue } from 'ethers';
 import { PaymentsService } from './payments.service';
 import { ConfigService } from '@nestjs/config';
 import { Provider } from 'ethers';
@@ -37,7 +37,10 @@ describe('PaymentsService', () => {
     } as unknown as ConfigService;
     
     service = new PaymentsService(
-      { getTransactionReceipt: getReceipt } as unknown as Provider,
+      { 
+        getTransactionReceipt: getReceipt,
+        getNetwork: jest.fn().mockResolvedValue({ chainId: 11155111n }),
+       } as unknown as Provider,
       config,
     );
   });
@@ -84,6 +87,14 @@ describe('PaymentsService', () => {
       logs: [transferLog(TOKEN, SHOP, 10_000_000n)],
     });
     await expect(service.verify(ORDER_ID, TX)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('expose the payment parameters the storefront needs', async () => {
+    await expect(service.config()).resolves.toEqual({
+      walletAddress: getAddress(SHOP),
+      tokenAddress: getAddress(TOKEN),
+      chainId: 11155111,
+    });
   });
 });
 

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, Inject } from '@nestjs/common';
-import { Interface, parseUnits } from 'ethers';
+import { Interface, parseUnits, getAddress } from 'ethers';
 import type { Provider } from 'ethers';
 import { ETH_PROVIDER } from './eth-provider';
 import { ConfigService } from '@nestjs/config';
@@ -57,5 +57,19 @@ export class PaymentsService {
 
     this.logger.log(`Order ${orderId} marked PAID (tx ${txHash})`);
     return { orderId, status: 'PAID', txHash };
+  }
+
+  async config() {
+    let chainId: number | undefined;
+    try {
+      chainId = Number((await this.provider.getNetwork()).chainId);
+    } catch {
+      this.logger.warn('Could not read the chain id from the RPC endpoint');
+    }
+    return { 
+      walletAddress: this.shopWallet ? getAddress(this.shopWallet) : '',
+      tokenAddress: this.usdt ? getAddress(this.usdt) : '',
+      chainId,
+     };
   }
 }
