@@ -79,6 +79,7 @@ docker run --rm -p 8545:8545 ghcr.io/foundry-rs/foundry:latest "anvil --host 0.0
 
 | Method & path | Body | Result |
 | --- | --- | --- |
+| `GET /payments/config` | - | `200` + `{ walletAddress, tokenAddress, chainId }` - what the storefront needs to build the transfer. The storefront reads it at checkout instead of baking per-shop values into its bundle |
 | `POST /payments/verify` | `{ orderId, txHash }` | `201` + `{ orderId, status: 'PAID', txHash }` when the transfer checks out; `400` when the order is unknown, the transaction is missing or unconfirmed, the recipient is wrong, or the amount is too low |
 | `GET /metrics` | - | `200` + Prometheus exposition format |
 | `GET /health` | - | `200` + a liveness result; it checks the process only, not the RPC endpoint or the order service |
